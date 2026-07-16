@@ -248,6 +248,21 @@ class ReservationManagerTest(unittest.TestCase):
             self.manager.make_summary(reservation, True),
         )
 
+    def test_summary_uses_staff_and_motion_capture_labels(self):
+        reservation = self.manager.reserve(
+            staff("f001", True),
+            equipment("mocap-01", "MOTION_CAPTURE"),
+            at(2026, 7, 20, 10, 0),
+            at(2026, 7, 20, 11, 0),
+            False,
+            False,
+        )
+
+        self.assertEqual(
+            "R-0001 モーションキャプチャ 教職員 "
+            "2026-07-20T10:00 - 2026-07-20T11:00",
+            self.manager.make_summary(reservation, False),
+        )
 
 def student(user_id, training_completed):
     user = UserData()
