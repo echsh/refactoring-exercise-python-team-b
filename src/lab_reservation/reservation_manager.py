@@ -177,23 +177,8 @@ class ReservationManager:
         return result
 
     def make_summary(self, reservation, include_fee):
-        if reservation.equipment_type == "LASER_CUTTER":
-            equipment = "レーザーカッター"
-        elif reservation.equipment_type == "GPU_SERVER":
-            equipment = "GPUサーバ"
-        elif reservation.equipment_type == "MOTION_CAPTURE":
-            equipment = "モーションキャプチャ"
-        else:
-            equipment = "不明な設備"
-
-        if reservation.user_type == "STUDENT":
-            user_type = "学生"
-        elif reservation.user_type == "STAFF":
-            user_type = "教職員"
-        elif reservation.user_type == "EXTERNAL":
-            user_type = "学外利用者"
-        else:
-            user_type = "不明な利用者"
+        equipment = CommonUtil.equipment_label(reservation.equipment_type)
+        user_type = CommonUtil.user_label(reservation.user_type)
 
         text = (
             reservation.reservation_id
