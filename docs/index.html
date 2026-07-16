@@ -1,0 +1,1245 @@
+\
+<!DOCTYPE html>
+<!-- GitHub Pages用：リポジトリの docs/index.html に配置する -->
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>リファクタリング演習 第1回：GitHubを使った修正とレビュー</title>
+  <style>
+    :root {
+      --ink: #1d2733;
+      --muted: #596777;
+      --line: #d9e0e7;
+      --soft: #f4f7fa;
+      --paper: #ffffff;
+      --accent: #2557a7;
+      --accent-dark: #173d78;
+      --accent-soft: #eaf1fb;
+      --good: #176b45;
+      --good-soft: #eaf7f0;
+      --warn: #8a5a00;
+      --warn-soft: #fff6dc;
+      --danger: #9b2c2c;
+      --danger-soft: #fff0f0;
+      --code: #17212b;
+      --code-ink: #eaf2f8;
+      --shadow: 0 12px 34px rgba(20, 39, 64, 0.09);
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: #edf1f5;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(37, 87, 167, 0.09), transparent 34rem),
+        #edf1f5;
+      font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", "Yu Gothic UI",
+        "Yu Gothic", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+      line-height: 1.75;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 0.18em;
+    }
+
+    a:hover { color: var(--accent-dark); }
+
+    .page {
+      width: min(1120px, calc(100% - 32px));
+      margin: 32px auto 64px;
+      background: var(--paper);
+      border: 1px solid rgba(29, 39, 51, 0.08);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    header {
+      padding: 50px clamp(24px, 6vw, 72px) 42px;
+      color: white;
+      background:
+        linear-gradient(135deg, rgba(20, 48, 94, 0.97), rgba(37, 87, 167, 0.93)),
+        #2557a7;
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      opacity: 0.82;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 900px;
+      font-size: clamp(2rem, 5vw, 3.65rem);
+      line-height: 1.18;
+      letter-spacing: -0.035em;
+    }
+
+    .lead {
+      max-width: 820px;
+      margin: 22px 0 0;
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      opacity: 0.94;
+    }
+
+    .goal-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 30px;
+    }
+
+    .goal {
+      min-height: 112px;
+      padding: 17px 18px;
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.09);
+      backdrop-filter: blur(5px);
+    }
+
+    .goal strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 1.02rem;
+    }
+
+    .goal span {
+      display: block;
+      font-size: 0.9rem;
+      opacity: 0.9;
+      line-height: 1.55;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      align-items: start;
+    }
+
+    nav {
+      position: sticky;
+      top: 16px;
+      padding: 30px 22px;
+      border-right: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+
+    nav h2 {
+      margin: 0 0 12px;
+      font-size: 0.9rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    nav ol {
+      margin: 0;
+      padding-left: 1.25rem;
+    }
+
+    nav li { margin: 0.42rem 0; }
+
+    nav a {
+      color: #3e4b59;
+      font-size: 0.91rem;
+      text-decoration: none;
+    }
+
+    nav a:hover {
+      color: var(--accent);
+      text-decoration: underline;
+    }
+
+    main {
+      min-width: 0;
+      padding: 38px clamp(24px, 5vw, 64px) 70px;
+    }
+
+    section {
+      scroll-margin-top: 20px;
+      padding: 12px 0 30px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section:last-child { border-bottom: 0; }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: clamp(1.45rem, 3vw, 2rem);
+      line-height: 1.35;
+      letter-spacing: -0.02em;
+    }
+
+    h3 {
+      margin: 26px 0 10px;
+      font-size: 1.18rem;
+      line-height: 1.45;
+    }
+
+    h4 {
+      margin: 18px 0 7px;
+      font-size: 1rem;
+    }
+
+    p { margin: 0.75em 0; }
+
+    ul, ol { padding-left: 1.45rem; }
+
+    li + li { margin-top: 0.32rem; }
+
+    .note,
+    .warning,
+    .success {
+      margin: 18px 0;
+      padding: 14px 17px;
+      border-radius: 12px;
+      border-left: 5px solid;
+    }
+
+    .note {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .warning {
+      border-color: #d19a1d;
+      background: var(--warn-soft);
+    }
+
+    .success {
+      border-color: var(--good);
+      background: var(--good-soft);
+    }
+
+    .note strong,
+    .warning strong,
+    .success strong { display: inline-block; margin-right: 0.3em; }
+
+    .team-grid,
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin: 18px 0;
+    }
+
+    .card {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 1.15rem;
+    }
+
+    .card p:last-child { margin-bottom: 0; }
+
+    .team-a { border-top: 5px solid #286fbe; }
+    .team-b { border-top: 5px solid #6b5bb5; }
+
+    .timeline {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin: 16px 0;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .timeline th,
+    .timeline td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .timeline th {
+      background: var(--soft);
+      font-size: 0.9rem;
+    }
+
+    .timeline tr:last-child td { border-bottom: 0; }
+
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin: 18px 0;
+    }
+
+    .flow-box {
+      padding: 10px 13px;
+      border: 1px solid #bdcbe0;
+      border-radius: 10px;
+      background: #f5f8fc;
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      font-size: 0.88rem;
+    }
+
+    .arrow {
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .step {
+      position: relative;
+      margin: 24px 0 30px;
+      padding: 24px 22px 22px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: white;
+    }
+
+    .step-number {
+      position: absolute;
+      top: -15px;
+      left: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 38px;
+      height: 30px;
+      padding: 0 10px;
+      color: white;
+      background: var(--accent);
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 0.87rem;
+      box-shadow: 0 5px 14px rgba(37, 87, 167, 0.22);
+    }
+
+    .step h3 { margin-top: 4px; }
+
+    .check {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      margin: 0.55rem 0;
+    }
+
+    .check input {
+      margin-top: 0.42rem;
+      accent-color: var(--accent);
+      transform: scale(1.08);
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      font-size: 0.92em;
+    }
+
+    :not(pre) > code {
+      padding: 0.12em 0.38em;
+      border-radius: 5px;
+      background: #edf1f5;
+      color: #26384b;
+    }
+
+    .code-wrap {
+      position: relative;
+      margin: 13px 0 18px;
+    }
+
+    pre {
+      margin: 0;
+      padding: 17px 18px;
+      overflow-x: auto;
+      color: var(--code-ink);
+      background: var(--code);
+      border-radius: 12px;
+      line-height: 1.55;
+      tab-size: 4;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+    }
+
+    pre code {
+      font-size: 0.88rem;
+      white-space: pre;
+    }
+
+    .copy {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 5px 9px;
+      border: 1px solid rgba(255,255,255,0.21);
+      border-radius: 7px;
+      color: #eaf2f8;
+      background: rgba(255,255,255,0.08);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.75rem;
+    }
+
+    .copy:hover { background: rgba(255,255,255,0.15); }
+
+    .file {
+      display: inline-block;
+      margin: 3px 0;
+      padding: 5px 9px;
+      border: 1px solid #cdd7e2;
+      border-radius: 8px;
+      color: #304257;
+      background: #f6f8fa;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 0.88rem;
+    }
+
+    .commit-list {
+      counter-reset: commits;
+      padding: 0;
+      list-style: none;
+    }
+
+    .commit-list li {
+      position: relative;
+      margin: 12px 0;
+      padding: 13px 14px 13px 47px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: #fbfcfd;
+    }
+
+    .commit-list li::before {
+      counter-increment: commits;
+      content: counter(commits);
+      position: absolute;
+      left: 13px;
+      top: 13px;
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      color: white;
+      background: var(--good);
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    details {
+      margin: 12px 0;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: #fff;
+    }
+
+    summary {
+      padding: 12px 15px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    details > div {
+      padding: 0 15px 14px;
+    }
+
+    .rubric {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin: 15px 0;
+    }
+
+    .rubric > div {
+      padding: 13px 15px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: var(--soft);
+    }
+
+    .rubric strong {
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    footer {
+      padding: 22px clamp(24px, 6vw, 72px);
+      color: #566475;
+      background: #f6f8fa;
+      border-top: 1px solid var(--line);
+      font-size: 0.88rem;
+    }
+
+    @media (max-width: 850px) {
+      .goal-row,
+      .team-grid,
+      .card-grid,
+      .rubric {
+        grid-template-columns: 1fr;
+      }
+
+      .layout { display: block; }
+
+      nav {
+        position: static;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      nav ol {
+        columns: 2;
+        column-gap: 28px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .page {
+        width: 100%;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+      }
+
+      header { padding-top: 34px; }
+
+      nav ol { columns: 1; }
+
+      .flow {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .arrow {
+        align-self: center;
+        transform: rotate(90deg);
+      }
+
+      .timeline {
+        display: block;
+        overflow-x: auto;
+      }
+    }
+
+    @media print {
+      html, body { background: white; }
+
+      .page {
+        width: 100%;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      nav, .copy { display: none; }
+
+      .layout { display: block; }
+
+      header {
+        color: black;
+        background: white;
+        border-bottom: 2px solid black;
+      }
+
+      .goal {
+        color: black;
+        border-color: #999;
+        background: white;
+      }
+
+      main { padding: 24px 0; }
+
+      section, .step, .card, details {
+        break-inside: avoid;
+      }
+
+      pre {
+        color: black;
+        background: #f3f3f3;
+        border: 1px solid #aaa;
+        white-space: pre-wrap;
+      }
+
+      a { color: black; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <p class="eyebrow">Refactoring Exercise · Session 1</p>
+    <h1>GitHubを使った修正とレビューの練習</h1>
+    <p class="lead">
+      研究設備予約システムを動かし，コード全体の流れを確認した後，
+      小さなリファクタリングをIssue，テスト，コミット，Pull Request，レビューの順に進める．
+    </p>
+    <div class="goal-row" aria-label="今回の到達目標">
+      <div class="goal">
+        <strong>コードを追う</strong>
+        <span>利用例から予約処理，保存，通知，表示までのつながりを確認する．</span>
+      </div>
+      <div class="goal">
+        <strong>安全に変更する</strong>
+        <span>現在の振る舞いをテストで固定し，小さな単位でリファクタリングする．</span>
+      </div>
+      <div class="goal">
+        <strong>共同作業を一巡する</strong>
+        <span>IssueからPRのレビュー・承認・mergeまでをグループで経験する．</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav aria-label="目次">
+      <h2>目次</h2>
+      <ol>
+        <li><a href="#before">作業前の確認</a></li>
+        <li><a href="#clone">取得と動作確認</a></li>
+        <li><a href="#overview">コード全体像</a></li>
+        <li><a href="#issue">Issue作成</a></li>
+        <li><a href="#branch">ブランチ作成</a></li>
+        <li><a href="#test">仕様化テスト</a></li>
+        <li><a href="#refactor">リファクタリング</a></li>
+        <li><a href="#push">pushとPR</a></li>
+        <li><a href="#review">レビューとmerge</a></li>
+        <li><a href="#wrapup">振り返り</a></li>
+        <li><a href="#trouble">トラブル対応</a></li>
+      </ol>
+    </nav>
+
+    <main>
+      <section id="before">
+        <h2>作業前の確認</h2>
+        <div class="warning">
+          <strong>重要：</strong>
+          指定された演習用リポジトリを使用する．
+          閲覧とcloneは誰でも可能であるが，push，Issue作成，Pull Request作成にはCollaborator権限とGitHubへのログインが必要である．
+        </div>
+
+        <p>
+          リポジトリのURLは，担当教員から指定されたものを使用する．
+          この資料はどちらのグループでも同じ内容を使用する．
+        </p>
+
+        <div class="note">
+          <strong>今回の修正の位置づけ：</strong>
+          <code>CommonUtil</code>を利用して局所的な重複を除く．
+          <code>CommonUtil</code>が最終的に望ましい設計であると決める作業ではない．
+          その責務や配置は，授業間の自由なリファクタリングで改めて検討できる．
+        </div>
+      </section>
+
+      <section id="clone">
+        <h2>1．リポジトリの取得と動作確認</h2>
+
+        <div class="step">
+          <span class="step-number">1-1</span>
+          <h3>演習用リポジトリをcloneする</h3>
+
+          <p>担当教員から指定されたURLを使用する．以下の<code>&lt;repository-url&gt;</code>を実際のURLへ置き換える．</p>
+          <div class="code-wrap">
+            <button class="copy" type="button">コピー</button>
+            <pre><code>git clone &lt;repository-url&gt;
+cd &lt;repository-name&gt;</code></pre>
+          </div>
+
+          <label class="check"><input type="checkbox"> 演習用リポジトリのディレクトリへ移動した．</label>
+        </div>
+
+        <div class="step">
+          <span class="step-number">1-2</span>
+          <h3>Gitの状態を確認する</h3>
+          <div class="code-wrap">
+            <button class="copy" type="button">コピー</button>
+            <pre><code>git status
+git remote -v
+git log --oneline -3</code></pre>
+          </div>
+
+          <p><code>origin</code>が指定されたリポジトリのURLを指していることを確認する．</p>
+          <label class="check"><input type="checkbox"> <code>origin</code>が正しいチームを指している．</label>
+        </div>
+
+        <div class="step">
+          <span class="step-number">1-3</span>
+          <h3>テストを実行する</h3>
+          <div class="code-wrap">
+            <button class="copy" type="button">コピー</button>
+            <pre><code>.\test.bat</code></pre>
+          </div>
+
+          <p>次の結果になることを確認する．</p>
+          <div class="code-wrap">
+            <pre><code>Ran 14 tests
+OK</code></pre>
+          </div>
+          <label class="check"><input type="checkbox"> 14件のテストがすべて成功した．</label>
+        </div>
+
+        <div class="step">
+          <span class="step-number">1-4</span>
+          <h3>デモを実行する</h3>
+          <div class="code-wrap">
+            <button class="copy" type="button">コピー</button>
+            <pre><code>$env:PYTHONPATH = "src"
+py -m lab_reservation.demo</code></pre>
+          </div>
+
+          <p>予約概要と通知メッセージが表示される．この利用例を入口として，本体コードを追う．</p>
+          <label class="check"><input type="checkbox"> デモがエラーなく実行できた．</label>
+        </div>
+      </section>
+
+      <section id="overview">
+        <h2>2．コードの全体像を確認する</h2>
+
+        <p>まず，次の順でファイルを開く．</p>
+        <div class="flow" aria-label="コードを追う順序">
+          <span class="flow-box">demo.py</span><span class="arrow">→</span>
+          <span class="flow-box">models.py</span><span class="arrow">→</span>
+          <span class="flow-box">ReservationManager.reserve()</span><span class="arrow">→</span>
+          <span class="flow-box">repository.py</span><span class="arrow">→</span>
+          <span class="flow-box">notification.py</span><span class="arrow">→</span>
+          <span class="flow-box">make_summary()</span>
+        </div>
+
+        <table class="timeline">
+          <thead>
+            <tr>
+              <th>ファイル</th>
+              <th>現在の主な役割</th>
+              <th>確認する箇所</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="file">demo.py</span></td>
+              <td>プログラムの利用例</td>
+              <td>利用者・設備を作り，<code>reserve()</code>を呼び出している．</td>
+            </tr>
+            <tr>
+              <td><span class="file">models.py</span></td>
+              <td>利用者，設備，予約のデータ</td>
+              <td>どの属性が初期値のままでもオブジェクトを作れるか．</td>
+            </tr>
+            <tr>
+              <td><span class="file">reservation_manager.py</span></td>
+              <td>予約，キャンセル，検索，表示</td>
+              <td>入力検査，利用条件，重複判定，料金計算，通知が集まっている．</td>
+            </tr>
+            <tr>
+              <td><span class="file">common_util.py</span></td>
+              <td>料金計算や表示名変換など</td>
+              <td><code>equipment_label()</code>と<code>user_label()</code>を確認する．</td>
+            </tr>
+            <tr>
+              <td><span class="file">repository.py</span></td>
+              <td>予約の保存と検索</td>
+              <td><code>find_all()</code>や<code>find_by_id()</code>が何を返すか．</td>
+            </tr>
+            <tr>
+              <td><span class="file">notification.py</span></td>
+              <td>通知の記録</td>
+              <td>テストでは送信内容をどのように確認しているか．</td>
+            </tr>
+            <tr>
+              <td><span class="file">tests/test_reservation_manager.py</span></td>
+              <td>現在の振る舞いの確認</td>
+              <td>テスト用の<code>student()</code>，<code>staff()</code>，<code>equipment()</code>も読む．</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="note">
+          <strong>今回注目する重複：</strong>
+          <code>ReservationManager.make_summary()</code>は，設備種別と利用者種別を日本語の表示名へ変換している．
+          同じ変換が<code>CommonUtil.equipment_label()</code>と<code>CommonUtil.user_label()</code>にもありる．
+        </div>
+
+        <label class="check"><input type="checkbox"> 予約作成から表示までの呼び出し関係を，説明した．</label>
+        <label class="check"><input type="checkbox"> <code>make_summary()</code>と<code>CommonUtil</code>の重複を確認した．</label>
+      </section>
+
+      <section id="issue">
+        <h2>3．Issueを作成する</h2>
+
+        <div class="step">
+          <span class="step-number">3</span>
+          <h3>GitHub上でIssueを登録する</h3>
+          <p>指定された演習用リポジトリをブラウザで開き，<strong>Issues → New issue</strong>を選ぶ．</p>
+
+          <h4>タイトル</h4>
+          <div class="code-wrap">
+            <button class="copy" type="button">コピー</button>
+            <pre><code>make_summaryの表示名変換の重複を除く</code></pre>
+          </div>
+
+          <h4>本文</h4>
+          <div class="code-wrap">
+            <button class="copy" type="button">コピー</button>
+            <pre><code>## 問題
+
+ReservationManager.make_summaryには，設備種別と利用者種別を
+表示名へ変換する条件分岐がある．
+
+同じ変換処理がCommonUtilにも存在しているため，
+現在の外部仕様を維持したまま重複を除く．
+
+## 完了条件
+
+- 現在のsummaryの出力を維持する
+- 表示名変換に関するテストを追加する
+- 既存テストをすべて通す
+- テスト追加とリファクタリングを別コミットにする</code></pre>
+          </div>
+
+          <p>作成後のIssue番号を記録する．以下では例として<code>#1</code>とする．</p>
+          <label class="check"><input type="checkbox"> Issueを作成し，番号を確認した．</label>
+        </div>
+      </section>
+
+      <section id="branch">
+        <h2>4．作業用ブランチを作成する</h2>
+
+        <div class="step">
+          <span class="step-number">4</span>
+          <h3><code>main</code>を更新してからブランチを作る</h3>
+          <div class="code-wrap">
+            <button class="copy" type="button">コピー</button>
+            <pre><code>git switch main
+git pull
+git switch -c refactor/reuse-summary-labels
+git status
+git branch</code></pre>
+          </div>
+
+          <p>ブランチ名の先頭に<code>refactor/</code>を付け，作業内容が分かる名前にしている．</p>
+          <div class="warning">
+            <strong>mainへ直接コミットしない．</strong>
+            修正は作業用ブランチで行い，Pull Requestを通してmainへ取り込みる．
+          </div>
+          <label class="check"><input type="checkbox"> 現在のブランチが<code>refactor/reuse-summary-labels</code>になった．</label>
+        </div>
+      </section>
+
+      <section id="test">
+        <h2>5．変更前の振る舞いをテストで固定する</h2>
+
+        <div class="step">
+          <span class="step-number">5-1</span>
+          <h3>仕様化テストを追加する</h3>
+          <p>
+            <span class="file">tests/test_reservation_manager.py</span>の
+            <code>ReservationManagerTest</code>クラス内へ，次のテストを追加する．
+            既存の<code>test_summary_uses_domain_labels_and_can_include_fee()</code>の後ろで構わない．
+          </p>
+
+          <div class="code-wrap">
+            <button class="copy" type="button">コピー</button>
+            <pre><code>def test_summary_uses_staff_and_motion_capture_labels(self):
+    reservation = self.manager.reserve(
+        staff("f001", True),
+        equipment("mocap-01", "MOTION_CAPTURE"),
+        at(2026, 7, 20, 10, 0),
+        at(2026, 7, 20, 11, 0),
+        False,
+        False,
+    )
+
+    self.assertEqual(
+        "R-0001 モーションキャプチャ 教職員 "
+        "2026-07-20T10:00 - 2026-07-20T11:00",
+        self.manager.make_summary(reservation, False),
+    )</code></pre>
+          </div>
+
+          <p>Pythonでは，メソッド全体を4文字分インデントして，クラスの中に置きる．</p>
+        </div>
+
+        <div class="step">
+          <span class="step-number">5-2</span>
+          <h3>変更前のコードでテストを通す</h3>
+          <div class="code-wrap">
+            <button class="copy" type="button">コピー</button>
+            <pre><code>.\test.bat</code></pre>
+          </div>
+
+          <p>テスト数が15件になり，すべて成功することを確認する．</p>
+          <div class="code-wrap">
+            <pre><code>Ran 15 tests
+OK</code></pre>
+          </div>
+
+          <div class="note">
+            <strong>なぜ最初から成功するのか：</strong>
+            今回は新機能の追加ではない．現在すでに存在する振る舞いを明示し，
+            これから行う内部変更で壊れていないことを確認するためのテストである．
+          </div>
+        </div>
+
+        <div class="step">
+          <span class="step-number">5-3</span>
+          <h3>テスト追加だけをコミットする</h3>
+          <div class="code-wrap">
+            <button class="copy" type="button">コピー</button>
+            <pre><code>git diff
+git status
+git add tests/test_reservation_manager.py
+git commit -m "test: cover summary labels for staff and motion capture"</code></pre>
+          </div>
+
+          <label class="check"><input type="checkbox"> 追加テストが成功した．</label>
+          <label class="check"><input type="checkbox"> テスト追加だけを1つ目のコミットにした．</label>
+        </div>
+      </section>
+
+      <section id="refactor">
+        <h2>6．重複した処理を整理する</h2>
+
+        <div class="step">
+          <span class="step-number">6-1</span>
+          <h3><code>make_summary()</code>を修正する</h3>
+
+          <p><span class="file">src/lab_reservation/reservation_manager.py</span>を開く．</p>
+
+          <p>設備表示名を作る条件分岐を，次の1行へ置き換える．</p>
+          <div class="code-wrap">
+            <button class="copy" type="button">コピー</button>
+            <pre><code>equipment = CommonUtil.equipment_label(reservation.equipment_type)</code></pre>
+          </div>
+
+          <p>利用者表示名を作る条件分岐を，次の1行へ置き換える．</p>
+          <div class="code-wrap">
+            <button class="copy" type="button">コピー</button>
+            <pre><code>user_type = CommonUtil.user_label(reservation.user_type)</code></pre>
+          </div>
+
+          <p>修正後のメソッド全体は，次の形になる．</p>
+          <div class="code-wrap">
+            <button class="copy" type="button">コピー</button>
+            <pre><code>def make_summary(self, reservation, include_fee):
+    equipment = CommonUtil.equipment_label(reservation.equipment_type)
+    user_type = CommonUtil.user_label(reservation.user_type)
+
+    text = (
+        reservation.reservation_id
+        + " "
+        + equipment
+        + " "
+        + user_type
+        + " "
+        + reservation.start_at.isoformat(timespec="minutes")
+        + " - "
+        + reservation.end_at.isoformat(timespec="minutes")
+    )
+    if include_fee:
+        text += " " + str(reservation.fee) + "円"
+    return text</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <span class="step-number">6-2</span>
+          <h3>テストと差分を確認する</h3>
+          <div class="code-wrap">
+            <button class="copy" type="button">コピー</button>
+            <pre><code>.\test.bat
+git diff
+git status</code></pre>
+          </div>
+
+          <p>15件すべてが成功し，差分が<code>make_summary()</code>の重複削除だけになっていることを確認する．</p>
+        </div>
+
+        <div class="step">
+          <span class="step-number">6-3</span>
+          <h3>リファクタリングを別コミットにする</h3>
+          <div class="code-wrap">
+            <button class="copy" type="button">コピー</button>
+            <pre><code>git add src/lab_reservation/reservation_manager.py
+git commit -m "refactor: reuse label conversion in reservation summary"
+git log --oneline --decorate -5</code></pre>
+          </div>
+
+          <p>次の2段階をコミット履歴から追えることを確認する．</p>
+          <ol class="commit-list">
+            <li>現在の表示名変換をテストで固定した．</li>
+            <li>外部仕様を変えず，重複した条件分岐を除いた．</li>
+          </ol>
+
+          <label class="check"><input type="checkbox"> 15件のテストがすべて成功した．</label>
+          <label class="check"><input type="checkbox"> テストと本体修正が別コミットになった．</label>
+        </div>
+      </section>
+
+      <section id="push">
+        <h2>7．pushしてPull Requestを作成する</h2>
+
+        <div class="step">
+          <span class="step-number">7-1</span>
+          <h3>作業ブランチをGitHubへpushする</h3>
+          <div class="code-wrap">
+            <button class="copy" type="button">コピー</button>
+            <pre><code>git push -u origin refactor/reuse-summary-labels</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <span class="step-number">7-2</span>
+          <h3>GitHub上でPull Requestを作る</h3>
+          <p>
+            GitHubのリポジトリを開き，表示された<strong>Compare &amp; pull request</strong>を押する．
+            baseが<code>main</code>，compareが<code>refactor/reuse-summary-labels</code>であることを確認する．
+          </p>
+
+          <h4>PRタイトル</h4>
+          <div class="code-wrap">
+            <button class="copy" type="button">コピー</button>
+            <pre><code>make_summaryの表示名変換の重複を除く</code></pre>
+          </div>
+
+          <h4>PR本文</h4>
+          <div class="code-wrap">
+            <button class="copy" type="button">コピー</button>
+            <pre><code>Closes #1
+
+## 問題と判断した構造
+
+make_summary内に，CommonUtilと同じ表示名変換処理が存在していた．
+設備種別や利用者種別が増えた場合，複数箇所を修正する必要がある．
+
+## この変更で容易になること
+
+表示名の変更箇所がCommonUtil側に集約される．
+
+## 主な変更
+
+- 表示名変換を確認するテストを追加した
+- make_summaryから重複した条件分岐を削除した
+- 既存のCommonUtilの変換処理を利用した
+
+## 追加・変更したテスト
+
+教職員がモーションキャプチャを予約した場合のsummaryを追加した．
+
+## 代替案と採用しなかった理由
+
+今回はGitHub上の修正手順を練習するため，表示名の責務を再設計せず，
+既存のCommonUtilを利用する小さな変更に留めた．
+
+## レビュー時に見てほしい点
+
+- summaryの出力内容が変化していないか
+- 変更範囲が目的に対して大きすぎないか
+- テスト追加と本体修正が分かれたコミットになっているか</code></pre>
+          </div>
+
+          <p><code>#1</code>は，実際に作成したIssue番号へ置き換える．ReviewerにはPR作成者以外の受講者を指定する．</p>
+        </div>
+
+        <div class="step">
+          <span class="step-number">7-3</span>
+          <h3>自動テストを確認する</h3>
+          <p>PR画面のChecksで，GitHub Actionsのテストが成功するまで確認する．</p>
+          <label class="check"><input type="checkbox"> PRに2つのコミットが含まれている．</label>
+          <label class="check"><input type="checkbox"> GitHub Actionsのテストが成功した．</label>
+          <label class="check"><input type="checkbox"> PR作成者以外をReviewerに指定した．</label>
+        </div>
+      </section>
+
+      <section id="review">
+        <h2>8．レビュー，承認，merge</h2>
+
+        <div class="step">
+          <span class="step-number">8-1</span>
+          <h3>Reviewerが確認する</h3>
+          <p>Reviewerは<strong>Files changed</strong>を開き，次を確認する．</p>
+
+          <div class="rubric">
+            <div><strong>仕様</strong>summaryの文字列が変化していないか．</div>
+            <div><strong>テスト</strong>現在の振る舞いを表すテストになっているか．</div>
+            <div><strong>変更範囲</strong>目的と関係のない修正が混ざっていないか．</div>
+            <div><strong>履歴</strong>テスト追加と本体修正が分離されているか．</div>
+          </div>
+
+          <p>少なくとも1件，コード行に対するレビューコメントを残する．指摘が必要なら<strong>Request changes</strong>，問題なければ<strong>Approve</strong>を選ぶ．</p>
+
+          <div class="note">
+            <strong>コメント例：</strong>
+            「既存のsummaryテストに加えて，今回のテストでモーションキャプチャと教職員を選んだ理由を確認したいである．」
+            問題を無理に作る必要はない．設計判断を確認する質問でも構わない．
+          </div>
+        </div>
+
+        <div class="step">
+          <span class="step-number">8-2</span>
+          <h3>必要な修正を追加する</h3>
+          <p>Request changesがあった場合，PR作成者は同じ作業ブランチを修正し，commit・pushする．既存のPRへ自動的に追加される．</p>
+          <div class="code-wrap">
+            <button class="copy" type="button">コピー</button>
+            <pre><code>git add &lt;修正したファイル&gt;
+git commit -m "fix: address review comments"
+git push</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <span class="step-number">8-3</span>
+          <h3>Approve後にmergeする</h3>
+          <p>レビュー承認と自動テスト成功を確認し，PRを<code>main</code>へmergeする．</p>
+          <label class="check"><input type="checkbox"> PR作成者以外がApproveした．</label>
+          <label class="check"><input type="checkbox"> PRをmainへmergeした．</label>
+          <label class="check"><input type="checkbox"> Issueが自動的にCloseされた．</label>
+        </div>
+
+        <div class="step">
+          <span class="step-number">8-4</span>
+          <h3>ローカル環境を更新する</h3>
+          <div class="code-wrap">
+            <button class="copy" type="button">コピー</button>
+            <pre><code>git switch main
+git pull
+.\test.bat</code></pre>
+          </div>
+
+          <p>作業担当者は，merge済みのローカルブランチも削除できる．</p>
+          <div class="code-wrap">
+            <button class="copy" type="button">コピー</button>
+            <pre><code>git branch -d refactor/reuse-summary-labels</code></pre>
+          </div>
+
+          <label class="check"><input type="checkbox"> mainが最新になり，15件のテストが成功した．</label>
+        </div>
+      </section>
+
+      <section id="wrapup">
+        <h2>9．振り返り</h2>
+        <p>次を話し合い，短くメモする．</p>
+        <ol>
+          <li>なぜコードを修正する前にテストを追加したのか．</li>
+          <li>なぜテスト追加と本体修正を別コミットにしたのか．</li>
+          <li>今回の変更で，外部から見える動作は変化したか．</li>
+          <li>重複を除いたことで，どの変更が容易になったか．</li>
+          <li>表示名変換を<code>CommonUtil</code>に置く設計自体は適切か．</li>
+          <li>今回の修正を最終的な設計と考えてよいか．</li>
+        </ol>
+
+        <div class="success">
+          <strong>授業間の課題へ：</strong>
+          今回は全員が同じ小さな修正を行いました．次はグループで元のコード全体を分析し，
+          問題ごとにIssueとPRを分けながら，変更しやすい構造へ段階的に改善する．
+        </div>
+      </section>
+
+      <section id="trouble">
+        <h2>トラブル対応</h2>
+
+        <details>
+          <summary>clone時に「Repository not found」と表示される</summary>
+          <div>
+            <p>GitHubへログインしているか，Collaborator招待を受け入れたか，指定されたリポジトリのURLを使っているか確認すること．</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>コミット時にuser.name / user.emailを求められる</summary>
+          <div>
+            <div class="code-wrap">
+              <button class="copy" type="button">コピー</button>
+              <pre><code>git config --global user.name "GitHub上の表示名"
+git config --global user.email "GitHubに登録したメールアドレス"</code></pre>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary><code>.\test.bat</code>を実行できない</summary>
+          <div>
+            <p>次のコマンドでもテストを実行できる．</p>
+            <div class="code-wrap">
+              <button class="copy" type="button">コピー</button>
+              <pre><code>$env:PYTHONPATH = "src"
+py -m unittest discover -s tests -v</code></pre>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>LFがCRLFに置き換わるというwarningが出る</summary>
+          <div>
+            <p>Windows上の改行コードに関する警告である．今回の演習では，そのまま進めて構わない．</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>テスト数が14件のままである</summary>
+          <div>
+            <p>追加したテストメソッドが<code>ReservationManagerTest</code>クラスの内側にあるか，名前が<code>test_</code>で始まっているか，インデントを確認すること．</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>push後にPull Request作成ボタンが見つからない</summary>
+          <div>
+            <p>GitHubの<strong>Pull requests → New pull request</strong>を開き，baseを<code>main</code>，compareを<code>refactor/reuse-summary-labels</code>に指定すること．</p>
+          </div>
+        </details>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    リファクタリング演習・第1回作業資料　
+    このページのチェック状態は，各ブラウザ内に保存される．
+  </footer>
+</div>
+
+<script>
+(function () {
+  const pageKey = "refactoring-exercise-session1-checks-v1";
+
+  document.querySelectorAll(".copy").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const code = button.nextElementSibling?.innerText ?? "";
+      try {
+        await navigator.clipboard.writeText(code);
+        const old = button.textContent;
+        button.textContent = "コピー済み";
+        setTimeout(() => { button.textContent = old; }, 1200);
+      } catch (_) {
+        button.textContent = "選択してコピー";
+      }
+    });
+  });
+
+  const checks = Array.from(document.querySelectorAll('input[type="checkbox"]'));
+  let saved = [];
+  try {
+    saved = JSON.parse(localStorage.getItem(pageKey) || "[]");
+  } catch (_) {
+    saved = [];
+  }
+
+  checks.forEach((check, index) => {
+    check.checked = Boolean(saved[index]);
+    check.addEventListener("change", () => {
+      const state = checks.map((item) => item.checked);
+      localStorage.setItem(pageKey, JSON.stringify(state));
+    });
+  });
+})();
+</script>
+</body>
+</html>
