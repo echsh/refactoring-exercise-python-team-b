@@ -1,9 +1,14 @@
+from datetime import time
+
 from .common_util import CommonUtil
 from .models import ReservationData
 
 
 class ReservationManager:
     no = 1
+    MAX_MINUTES_BY_USER_TYPE = {"STUDENT": 240, "STAFF": 480, "EXTERNAL": 120}
+    OPENING_TIME = time(8, 0)
+    CLOSING_TIME = time(22, 0)
 
     def __init__(self, repository, notification_service):
         self.repository = repository
@@ -20,23 +25,20 @@ class ReservationManager:
     ):
         if user is None:
             raise ValueError("user is required")
-        else:
-            if equipment is None:
-                raise ValueError("equipment is required")
-            else:
-                if (
-                    CommonUtil.empty(user.id)
-                    or CommonUtil.empty(user.name)
-                    or CommonUtil.empty(user.type)
-                ):
-                    raise ValueError("invalid user")
-                else:
-                    if (
-                        CommonUtil.empty(equipment.code)
-                        or CommonUtil.empty(equipment.name)
-                        or CommonUtil.empty(equipment.type)
-                    ):
-                        raise ValueError("invalid equipment")
+        if equipment is None:
+            raise ValueError("equipment is required")
+        if (
+            CommonUtil.empty(user.id)
+            or CommonUtil.empty(user.name)
+            or CommonUtil.empty(user.type)
+        ):
+            raise ValueError("invalid user")
+        if (
+            CommonUtil.empty(equipment.code)
+            or CommonUtil.empty(equipment.name)
+            or CommonUtil.empty(equipment.type)
+        ):
+            raise ValueError("invalid equipment")
 
         if start_at is None or end_at is None:
             raise ValueError("start and end are required")
@@ -53,27 +55,17 @@ class ReservationManager:
             raise RuntimeError("equipment is inactive")
 
         minutes = int((end_at - start_at).total_seconds() // 60)
-        if user.type == "STUDENT":
-            if minutes > 240:
-                raise ValueError("student reservation is too long")
-        elif user.type == "STAFF":
-            if minutes > 480:
-                raise ValueError("staff reservation is too long")
-        elif user.type == "EXTERNAL":
-            if minutes > 120:
-                raise ValueError("external reservation is too long")
-        else:
+        max_minutes = ReservationManager.MAX_MINUTES_BY_USER_TYPE.get(user.type)
+        if max_minutes is None:
             raise ValueError(f"unknown user type: {user.type}")
+        if minutes > max_minutes:
+            raise ValueError(f"{user.type.lower()} reservation is too long")
 
         if emergency:
             if user.type != "STAFF":
                 raise ValueError("only staff can make emergency reservations")
         else:
-            if (
-                start_at.hour < 8
-                or end_at.hour > 22
-                or (end_at.hour == 22 and end_at.minute > 0)
-            ):
+            if start_at.time() < ReservationManager.OPENING_TIME or end_at.time() > ReservationManager.CLOSING_TIME:
                 raise ValueError("outside operating hours")
 
         if user.type == "EXTERNAL":
